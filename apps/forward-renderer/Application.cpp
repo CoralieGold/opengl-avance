@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <glm/glm.hpp>
+#include <glm/ext.hpp>
 #include <imgui.h>
 #include <glmlv/imgui_impl_glfw_gl3.hpp>
 #include <glmlv/simple_geometry.hpp>
@@ -16,19 +17,25 @@ int Application::run()
     {
         const auto seconds = glfwGetTime();
 
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Put here rendering code
-        
-        glBindVertexArray(m_cubeVAO);
-        // We draw 6 triangles for a quad, so 3 * 6 = 18 indices must be used
-        glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, nullptr);
-        glBindVertexArray(0);
+        glm::mat4 ProjMatrix, MVMatrix_Cube, NormalMatrix, ViewMatrix;
+        ProjMatrix = glm::perspective(glm::radians(70.f), float(m_nWindowWidth)/float(m_nWindowHeight), 0.1f, 100.f);
+        MVMatrix_Cube = glm::translate(MVMatrix_Cube, glm::vec3(0.,0.,-5.0));
+        NormalMatrix = glm::transpose(glm::inverse(MVMatrix_Cube));
+        //ViewMatrix = viewController.getViewMatrix();
+        ViewMatrix = glm::lookAt(glm::vec3(1, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
-        /*glBindVertexArray(m_sphereVAO);
-        // We draw 6 triangles for a quad, so 3 * 6 = 18 indices must be used
-        glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, nullptr);
-        glBindVertexArray(0);*/
+        /**** CUBE ****/
+        glBindVertexArray(m_cubeVAO);
+        MVMatrix_Cube = ViewMatrix * MVMatrix_Cube;
+        glUniformMatrix4fv(m_program.getAttribLocation("uMVMatrix"), 1, GL_FALSE, glm::value_ptr(MVMatrix_Cube));
+        glUniformMatrix4fv(m_program.getAttribLocation("uNormalMatrix"), 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+        glUniformMatrix4fv(m_program.getAttribLocation("uMVPMatrix"), 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Cube));
+
+        glDrawElements(GL_TRIANGLES, cube.indexBuffer.size(), GL_UNSIGNED_INT, nullptr); 
+        glBindVertexArray(0);
 
 
         // GUI code:
@@ -71,16 +78,27 @@ Application::Application(int argc, char** argv):
     m_ShadersRootPath { m_AppPath.parent_path() / "shaders" }
 
 {
+    /************************************************************/
+    /**** INITIALISATION ****/
+    /************************************************************/
     // Here we load and compile shaders from the library
-    m_program = glmlv::compileProgram({ m_ShadersRootPath / "forward-renderer" / "forward.vs.glsl", m_ShadersRootPath / "forward-renderer" / "forward.fs.glsl" });
+    m_program = glmlv::compileProgram({ m_ShadersRootPath / m_AppName / "forward.vs.glsl", m_ShadersRootPath / m_AppName / "forward.fs.glsl" });
 
+    // const GLint positionAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexPosition");
+    // const GLint normalAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexNormal");
+    // const GLint texCoordsAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexTexCoords");
     const GLint positionAttrLocation = 0;
     const GLint normalAttrLocation = 1;
     const GLint texCoordsAttrLocation = 2;
 
-	/**** GENERATION D'UN CUBE ****/
+    m_program.use();
+    ImGui::GetIO().IniFilename = m_ImGuiIniFilename.c_str(); // At exit, ImGUI will store its windows positions in this file
+
+    /************************************************************/
+	/**** CUBE ****/
+    /************************************************************/
 	glGenBuffers(1, &m_cubeVBO);
-	glmlv::SimpleGeometry cube = glmlv::makeCube();
+	cube = glmlv::makeCube();
 
 	glBindBuffer(GL_ARRAY_BUFFER, m_cubeVBO);
     glBufferStorage(GL_ARRAY_BUFFER, cube.vertexBuffer.size()*sizeof(cube.vertexBuffer[0]), cube.vertexBuffer.data(), 0);
@@ -111,7 +129,9 @@ Application::Application(int argc, char** argv):
     glBindVertexArray(0);
 
 
-    /**** GENERATION D'UNE SPHERE ****/
+    /************************************************************/
+    /**** SPHERE ****/
+    /************************************************************/
     /*glGenBuffers(1, &m_sphereVBO);
     glmlv::SimpleGeometry sphere = glmlv::makeSphere(10);
 
@@ -143,9 +163,7 @@ Application::Application(int argc, char** argv):
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);*/
 
-    m_program.use();
 
-    ImGui::GetIO().IniFilename = m_ImGuiIniFilename.c_str(); // At exit, ImGUI will store its windows positions in this file
 }
 
 Application::~Application()

@@ -3,6 +3,7 @@
 #include <glmlv/filesystem.hpp>
 #include <glmlv/GLFWHandle.hpp>
 #include <glmlv/GLProgram.hpp>
+#include <glmlv/simple_geometry.hpp>
 
 class Application
 {
@@ -29,4 +30,6 @@ private:
     GLuint m_sphereVAO = 0;
     
     glmlv::GLProgram m_program;
+
+    glmlv::SimpleGeometry cube;
 };
