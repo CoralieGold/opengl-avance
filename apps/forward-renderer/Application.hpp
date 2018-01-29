@@ -20,9 +20,13 @@ private:
     const std::string m_ImGuiIniFilename;
     const glmlv::fs::path m_ShadersRootPath;
     
-    GLuint m_quadVBO = 0;
-    GLuint m_quadIBO = 0;
-    GLuint m_quadVAO = 0;
+    GLuint m_cubeVBO = 0;
+    GLuint m_cubeIBO = 0;
+    GLuint m_cubeVAO = 0;
+
+    GLuint m_sphereVBO = 0;
+    GLuint m_sphereIBO = 0;
+    GLuint m_sphereVAO = 0;
     
     glmlv::GLProgram m_program;
 };

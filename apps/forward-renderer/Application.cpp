@@ -20,10 +20,15 @@ int Application::run()
 
         // Put here rendering code
         
-        glBindVertexArray(m_quadVAO);
+        glBindVertexArray(m_cubeVAO);
         // We draw 6 triangles for a quad, so 3 * 6 = 18 indices must be used
         glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
+
+        /*glBindVertexArray(m_sphereVAO);
+        // We draw 6 triangles for a quad, so 3 * 6 = 18 indices must be used
+        glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, nullptr);
+        glBindVertexArray(0);*/
 
 
         // GUI code:
@@ -66,30 +71,30 @@ Application::Application(int argc, char** argv):
     m_ShadersRootPath { m_AppPath.parent_path() / "shaders" }
 
 {
-	/**** GENERATION D'UN CUBE ****/
-	glGenBuffers(1, &m_quadVBO);
-	glmlv::SimpleGeometry cube = glmlv::makeCube();
-
-	glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
-    glBufferStorage(GL_ARRAY_BUFFER, cube.vertexBuffer.size()*sizeof(cube.vertexBuffer[0]), cube.vertexBuffer.data(), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glGenBuffers(1, &m_quadIBO);
-    glBindBuffer(GL_ARRAY_BUFFER, m_quadIBO);
-    glBufferStorage(GL_ARRAY_BUFFER, cube.indexBuffer.size()*sizeof(cube.indexBuffer[0]), cube.indexBuffer.data(), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-  
-    glGenVertexArrays(1, &m_quadVAO);
-	
-	// Here we load and compile shaders from the library
-    m_program = glmlv::compileProgram({ m_ShadersRootPath / "glmlv" / "position2_color3.vs.glsl", m_ShadersRootPath / "glmlv" / "color3.fs.glsl" });
+    // Here we load and compile shaders from the library
+    m_program = glmlv::compileProgram({ m_ShadersRootPath / "forward-renderer" / "forward.vs.glsl", m_ShadersRootPath / "forward-renderer" / "forward.fs.glsl" });
 
     const GLint positionAttrLocation = 0;
     const GLint normalAttrLocation = 1;
     const GLint texCoordsAttrLocation = 2;
 
-    glBindVertexArray(m_quadVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
+	/**** GENERATION D'UN CUBE ****/
+	glGenBuffers(1, &m_cubeVBO);
+	glmlv::SimpleGeometry cube = glmlv::makeCube();
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_cubeVBO);
+    glBufferStorage(GL_ARRAY_BUFFER, cube.vertexBuffer.size()*sizeof(cube.vertexBuffer[0]), cube.vertexBuffer.data(), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glGenBuffers(1, &m_cubeIBO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_cubeIBO);
+    glBufferStorage(GL_ARRAY_BUFFER, cube.indexBuffer.size()*sizeof(cube.indexBuffer[0]), cube.indexBuffer.data(), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+  
+    glGenVertexArrays(1, &m_cubeVAO);
+
+    glBindVertexArray(m_cubeVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_cubeVBO);
 
     glEnableVertexAttribArray(positionAttrLocation);
     glVertexAttribPointer(positionAttrLocation, 3, GL_FLOAT, GL_FALSE, sizeof(glmlv::Vertex3f3f2f), (const GLvoid*) offsetof(glmlv::Vertex3f3f2f, position));
@@ -101,9 +106,42 @@ Application::Application(int argc, char** argv):
     glVertexAttribPointer(texCoordsAttrLocation, 2, GL_FLOAT, GL_FALSE, sizeof(glmlv::Vertex3f3f2f), (const GLvoid*) offsetof(glmlv::Vertex3f3f2f, texCoords));
 
     // "GL_ELEMENT_ARRAY_BUFFER" permet de preciser que ce sont des indexs
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_quadIBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_cubeIBO);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+
+    /**** GENERATION D'UNE SPHERE ****/
+    /*glGenBuffers(1, &m_sphereVBO);
+    glmlv::SimpleGeometry sphere = glmlv::makeSphere(10);
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_sphereVBO);
+    glBufferStorage(GL_ARRAY_BUFFER, sphere.vertexBuffer.size()*sizeof(sphere.vertexBuffer[0]), sphere.vertexBuffer.data(), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glGenBuffers(1, &m_sphereIBO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_sphereIBO);
+    glBufferStorage(GL_ARRAY_BUFFER, sphere.indexBuffer.size()*sizeof(sphere.indexBuffer[0]), sphere.indexBuffer.data(), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+  
+    glGenVertexArrays(1, &m_sphereVAO);
+
+    glBindVertexArray(m_sphereVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_sphereVBO);
+
+    glEnableVertexAttribArray(positionAttrLocation);
+    glVertexAttribPointer(positionAttrLocation, 3, GL_FLOAT, GL_FALSE, sizeof(glmlv::Vertex3f3f2f), (const GLvoid*) offsetof(glmlv::Vertex3f3f2f, position));
+
+    glEnableVertexAttribArray(normalAttrLocation);
+    glVertexAttribPointer(normalAttrLocation, 3, GL_FLOAT, GL_FALSE, sizeof(glmlv::Vertex3f3f2f), (const GLvoid*) offsetof(glmlv::Vertex3f3f2f, normal));
+
+    glEnableVertexAttribArray(texCoordsAttrLocation);
+    glVertexAttribPointer(texCoordsAttrLocation, 2, GL_FLOAT, GL_FALSE, sizeof(glmlv::Vertex3f3f2f), (const GLvoid*) offsetof(glmlv::Vertex3f3f2f, texCoords));
+
+    // "GL_ELEMENT_ARRAY_BUFFER" permet de preciser que ce sont des indexs
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_sphereIBO);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);*/
 
     m_program.use();
 
@@ -112,16 +150,28 @@ Application::Application(int argc, char** argv):
 
 Application::~Application()
 {
-    if (m_quadVBO) {
-        glDeleteBuffers(1, &m_quadVBO);
+    if (m_cubeVBO) {
+        glDeleteBuffers(1, &m_cubeVBO);
     }
 
-    if (m_quadIBO) {
-        glDeleteBuffers(1, &m_quadIBO);
+    if (m_cubeIBO) {
+        glDeleteBuffers(1, &m_cubeIBO);
     }
 
-    if (m_quadVAO) {
-        glDeleteBuffers(1, &m_quadVAO);
+    if (m_cubeVAO) {
+        glDeleteBuffers(1, &m_cubeVAO);
+    }
+
+    if (m_sphereVBO) {
+        glDeleteBuffers(1, &m_sphereVBO);
+    }
+
+    if (m_sphereIBO) {
+        glDeleteBuffers(1, &m_sphereIBO);
+    }
+
+    if (m_sphereVAO) {
+        glDeleteBuffers(1, &m_sphereVAO);
     }
 
     ImGui_ImplGlfwGL3_Shutdown();
