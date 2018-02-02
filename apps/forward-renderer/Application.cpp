@@ -12,6 +12,9 @@
 int Application::run()
 {
     float clearColor[3] = { 0, 0, 0 };
+    float lightColor[3] = { 0.5, 0.5, 0.5 };
+    float lightIntensity[3] = { 0.5, 0.5, 0.5 };
+    float pointLightIntensity[3] = { 0.5, 0.5, 0.5 };
     // Loop until the user closes the window
     for (auto iterationCount = 0u; !m_GLFWHandle.shouldClose(); ++iterationCount)
     {
@@ -29,10 +32,10 @@ int Application::run()
         //ViewMatrix = glm::lookAt(glm::vec3(1, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
         glUniform3fv(uDirectionalLightDirect, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 0)));
-        glUniform3fv(uDirectionalLightIntensity, 1, glm::value_ptr(glm::vec3(1)));
+        glUniform3fv(uDirectionalLightIntensity, 1, glm::value_ptr(glm::vec3(lightIntensity[0], lightIntensity[1], lightIntensity[2])));
         glUniform3fv(uPointLightPosition, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 1)));
-        glUniform3fv(uPointLightIntensity, 1, glm::value_ptr(glm::vec3(1)));
-        glUniform3fv(uKd, 1, glm::value_ptr(glm::vec3(0.5, 0.5, 0.5)));
+        glUniform3fv(uPointLightIntensity, 1, glm::value_ptr(glm::vec3(pointLightIntensity[0], pointLightIntensity[1], pointLightIntensity[2])));
+        glUniform3fv(uKd, 1, glm::value_ptr(glm::vec3(lightColor[0], lightColor[1], lightColor[2])));
 
         /**** CUBE ****/
         glBindVertexArray(m_cubeVAO);
@@ -64,6 +67,15 @@ int Application::run()
             ImGui::ColorEditMode(ImGuiColorEditMode_RGB);
             if (ImGui::ColorEdit3("clearColor", clearColor)) {
                 glClearColor(clearColor[0], clearColor[1], clearColor[2], 1.f);
+            }
+            if (ImGui::ColorEdit3("lightColor", lightColor)) {
+                glClearColor(lightColor[0], lightColor[1], lightColor[2], 1.f);
+            }
+            if (ImGui::ColorEdit3("lightIntensity", lightIntensity)) {
+                glClearColor(lightIntensity[0], lightIntensity[1], lightIntensity[2], 1.f);
+            }
+            if (ImGui::ColorEdit3("pointLightIntensity", pointLightIntensity)) {
+                glClearColor(pointLightIntensity[0], pointLightIntensity[1], pointLightIntensity[2], 1.f);
             }
             ImGui::End();
         }
