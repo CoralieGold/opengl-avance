@@ -4,6 +4,7 @@
 #include <glmlv/GLFWHandle.hpp>
 #include <glmlv/GLProgram.hpp>
 #include <glmlv/simple_geometry.hpp>
+#include <glmlv/Image2DRGBA.hpp>
 #include <glmlv/ViewController.hpp>
 
 class Application
@@ -21,6 +22,7 @@ private:
     const std::string m_AppName;
     const std::string m_ImGuiIniFilename;
     const glmlv::fs::path m_ShadersRootPath;
+    const glmlv::fs::path m_AssetsRootPath;
     
     GLuint m_cubeVBO = 0;
     GLuint m_cubeIBO = 0;
@@ -41,9 +43,15 @@ private:
     GLint m_uPointLightIntensity = -1;
     GLint m_uKd = -1;
 
+    // Variable uniforme texture
+    GLint m_uKdSampler = -1;
+
     glmlv::GLProgram m_program;
     glmlv::ViewController m_Camera;
 
     glmlv::SimpleGeometry cube;
     glmlv::SimpleGeometry sphere;    
+
+    GLuint m_cubeTexture;
+    GLuint m_sphereTexture;
 };

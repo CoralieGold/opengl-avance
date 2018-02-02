@@ -6,7 +6,6 @@
 #include <glm/ext.hpp>
 #include <imgui.h>
 #include <glmlv/imgui_impl_glfw_gl3.hpp>
-#include <glmlv/simple_geometry.hpp>
 #include <glm/gtc/constants.hpp>
 
 int Application::run()
@@ -14,7 +13,7 @@ int Application::run()
     float clearColor[3] = { 0, 0, 0 };
     float lightColor[3] = { 0.5, 0.5, 0.5 };
     float lightIntensity[3] = { 0.5, 0.5, 0.5 };
-    float pointLightIntensity[3] = { 0.5, 0.5, 0.5 };
+    float pointLightIntensity[3] = { 1000, 1000, 1000 };
     // Loop until the user closes the window
     for (auto iterationCount = 0u; !m_GLFWHandle.shouldClose(); ++iterationCount)
     {
@@ -23,40 +22,52 @@ int Application::run()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Put here rendering code
-        glm::mat4 ProjMatrix, MVMatrix_Cube, MVMatrix_Sphere, NormalMatrix, ViewMatrix;
-        ProjMatrix = glm::perspective(glm::radians(70.f), float(m_nWindowWidth)/float(m_nWindowHeight), 0.1f, 100.f);
-        MVMatrix_Cube = glm::translate(glm::mat4(1), glm::vec3(2.,0.5,-5.0));
-        MVMatrix_Sphere = glm::translate(glm::mat4(1), glm::vec3(-2.,0.5,-5.0));
-        NormalMatrix = glm::transpose(glm::inverse(MVMatrix_Cube));
-        ViewMatrix = m_Camera.getViewMatrix();
-        //ViewMatrix = glm::lookAt(glm::vec3(1, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+        const auto ProjMatrix = glm::perspective(glm::radians(70.f), float(m_nWindowWidth)/float(m_nWindowHeight), 0.1f, 100.f);
+        const auto ViewMatrix = m_Camera.getViewMatrix();
 
         glUniform3fv(m_uDirectionalLightDirect, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 0)));
         glUniform3fv(m_uDirectionalLightIntensity, 1, glm::value_ptr(glm::vec3(lightIntensity[0], lightIntensity[1], lightIntensity[2])));
-        glUniform3fv(m_uPointLightPosition, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 1)));
+        glUniform3fv(m_uPointLightPosition, 1, glm::value_ptr(ViewMatrix * glm::vec4(10, 10, 10, 1)));
         glUniform3fv(m_uPointLightIntensity, 1, glm::value_ptr(glm::vec3(pointLightIntensity[0], pointLightIntensity[1], pointLightIntensity[2])));
         glUniform3fv(m_uKd, 1, glm::value_ptr(glm::vec3(lightColor[0], lightColor[1], lightColor[2])));
 
         /**** CUBE ****/
         glBindVertexArray(m_cubeVAO);
-        MVMatrix_Cube = ViewMatrix * MVMatrix_Cube;
-        glUniformMatrix4fv(m_uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix_Cube));
-        glUniformMatrix4fv(m_uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glUniformMatrix4fv(m_uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Cube));
+
+        glActiveTexture(GL_TEXTURE0);
+        glUniform1i(m_uKdSampler, 0);
+        glBindTexture(GL_TEXTURE_2D, m_cubeTexture);
+
+        {
+            const auto MVMatrix = ViewMatrix * glm::translate(glm::mat4(1), glm::vec3(2.,0.5,-5.0));
+            const auto NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+            glUniformMatrix4fv(m_uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+            glUniformMatrix4fv(m_uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glUniformMatrix4fv(m_uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+        }
 
         glDrawElements(GL_TRIANGLES, cube.indexBuffer.size(), GL_UNSIGNED_INT, nullptr); 
+        glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
 
         /**** SPHERE ****/
         glBindVertexArray(m_sphereVAO);
-        MVMatrix_Sphere = ViewMatrix * MVMatrix_Sphere;
-        glUniformMatrix4fv(m_uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix_Sphere));
-        glUniformMatrix4fv(m_uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glUniformMatrix4fv(m_uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Sphere));
+
+        glActiveTexture(GL_TEXTURE0);
+        glUniform1i(m_uKdSampler, 0);
+        glBindTexture(GL_TEXTURE_2D, m_sphereTexture);
+
+        {
+            const auto MVMatrix = ViewMatrix * glm::translate(glm::mat4(1), glm::vec3(-2.,0.5,-5.0));
+            const auto NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+            glUniformMatrix4fv(m_uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+            glUniformMatrix4fv(m_uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glUniformMatrix4fv(m_uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+        }
 
         glDrawElements(GL_TRIANGLES, sphere.indexBuffer.size(), GL_UNSIGNED_INT, nullptr); 
+        glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
-
 
         // GUI code:
         ImGui_ImplGlfwGL3_NewFrame();
@@ -68,15 +79,9 @@ int Application::run()
             if (ImGui::ColorEdit3("clearColor", clearColor)) {
                 glClearColor(clearColor[0], clearColor[1], clearColor[2], 1.f);
             }
-            if (ImGui::ColorEdit3("lightColor", lightColor)) {
-                glClearColor(lightColor[0], lightColor[1], lightColor[2], 1.f);
-            }
-            if (ImGui::ColorEdit3("lightIntensity", lightIntensity)) {
-                glClearColor(lightIntensity[0], lightIntensity[1], lightIntensity[2], 1.f);
-            }
-            if (ImGui::ColorEdit3("pointLightIntensity", pointLightIntensity)) {
-                glClearColor(pointLightIntensity[0], pointLightIntensity[1], pointLightIntensity[2], 1.f);
-            }
+            ImGui::ColorEdit3("lightColor", lightColor);
+            ImGui::InputFloat3("lightIntensity", lightIntensity);
+            ImGui::InputFloat3("pointLightIntensity", pointLightIntensity);
             ImGui::End();
         }
 
@@ -105,7 +110,8 @@ Application::Application(int argc, char** argv):
     m_AppName { m_AppPath.stem().string() },
     m_ImGuiIniFilename { m_AppName + ".imgui.ini" },
     m_ShadersRootPath { m_AppPath.parent_path() / "shaders" },
-    m_Camera(m_GLFWHandle.window(), 1.f)
+    m_AssetsRootPath { m_AppPath.parent_path() / "assets" },
+    m_Camera(m_GLFWHandle.window(), 5.f)
 {
     /************************************************************/
     /**** INITIALISATION ****/
@@ -123,6 +129,7 @@ Application::Application(int argc, char** argv):
     m_uPointLightPosition = m_program.getUniformLocation("uPointLightPosition");
     m_uPointLightIntensity = m_program.getUniformLocation("uPointLightIntensity");
     m_uKd = m_program.getUniformLocation("uKd");
+    m_uKdSampler = m_program.getUniformLocation("uKdSampler");
 
     // const GLint positionAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexPosition");
     // const GLint normalAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexNormal");
@@ -139,6 +146,18 @@ Application::Application(int argc, char** argv):
     /************************************************************/
 	/**** CUBE ****/
     /************************************************************/
+    glmlv::Image2DRGBA imageCube = glmlv::readImage(m_AssetsRootPath / m_AppName / "textures" / "texture1.jpg");
+
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &m_cubeTexture);
+    glBindTexture(GL_TEXTURE_2D, m_cubeTexture);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, imageCube.width(), imageCube.height());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, imageCube.width(), imageCube.height(), GL_RGBA, GL_UNSIGNED_BYTE, imageCube.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+
 	glGenBuffers(1, &m_cubeVBO);
 	cube = glmlv::makeCube();
 
@@ -173,6 +192,17 @@ Application::Application(int argc, char** argv):
     /************************************************************/
     /**** SPHERE ****/
     /************************************************************/
+    glmlv::Image2DRGBA imageSphere = glmlv::readImage(m_AssetsRootPath / m_AppName / "textures" / "texture1.jpg");
+
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &m_sphereTexture);
+    glBindTexture(GL_TEXTURE_2D, m_sphereTexture);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, imageSphere.width(), imageSphere.height());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, imageSphere.width(), imageSphere.height(), GL_RGBA, GL_UNSIGNED_BYTE, imageCube.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     glGenBuffers(1, &m_sphereVBO);
     sphere = glmlv::makeSphere(10);
 
