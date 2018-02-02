@@ -6,6 +6,7 @@
 #include <glmlv/simple_geometry.hpp>
 #include <glmlv/Image2DRGBA.hpp>
 #include <glmlv/ViewController.hpp>
+#include <glmlv/load_obj.hpp>
 
 class Application
 {
@@ -24,6 +25,7 @@ private:
     const glmlv::fs::path m_ShadersRootPath;
     const glmlv::fs::path m_AssetsRootPath;
     
+    /*
     GLuint m_cubeVBO = 0;
     GLuint m_cubeIBO = 0;
     GLuint m_cubeVAO = 0;
@@ -31,6 +33,11 @@ private:
     GLuint m_sphereVBO = 0;
     GLuint m_sphereIBO = 0;
     GLuint m_sphereVAO = 0;
+    */
+
+    GLuint m_SceneVBO = 0;
+    GLuint m_SceneIBO = 0;
+    GLuint m_SceneVAO = 0;
     
     GLint m_uMVMatrix = -1;
     GLint m_uMVPMatrix = -1;
@@ -49,9 +56,15 @@ private:
     glmlv::GLProgram m_program;
     glmlv::ViewController m_Camera;
 
+    /*
     glmlv::SimpleGeometry cube;
-    glmlv::SimpleGeometry sphere;    
+    glmlv::SimpleGeometry sphere;  
+    */
 
+    glmlv::ObjData sponza; 
+
+    /*
     GLuint m_cubeTexture;
     GLuint m_sphereTexture;
+    */
 };

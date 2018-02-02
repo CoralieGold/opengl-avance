@@ -11,27 +11,40 @@
 int Application::run()
 {
     float clearColor[3] = { 0, 0, 0 };
-    float lightColor[3] = { 0.5, 0.5, 0.5 };
+    float lightColor[3] = { 1, 1, 1 };
+    float lightDirection[3] = { 1, 1, 1 };
     float lightIntensity[3] = { 0.5, 0.5, 0.5 };
     float pointLightIntensity[3] = { 1000, 1000, 1000 };
+    float pointLightPosition[3] = { 1, 1, 1 };
+
     // Loop until the user closes the window
     for (auto iterationCount = 0u; !m_GLFWHandle.shouldClose(); ++iterationCount)
     {
         const auto seconds = glfwGetTime();
+        
+        const auto viewportSize = m_GLFWHandle.framebufferSize();
+        glViewport(0, 0, viewportSize.x, viewportSize.y);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Put here rendering code
-        const auto ProjMatrix = glm::perspective(glm::radians(70.f), float(m_nWindowWidth)/float(m_nWindowHeight), 0.1f, 100.f);
+        const auto sceneDiagonalSize = glm::length(sponza.bboxMax - sponza.bboxMin);
+        m_Camera.setSpeed(sceneDiagonalSize * 0.1f); // 10% de la scene parcouru par seconde
+
+        const auto ProjMatrix = glm::perspective(70.f, float(viewportSize.x) / viewportSize.y, 0.01f * sceneDiagonalSize, sceneDiagonalSize); // near = 1% de la taille de la scene, far = 100%
+        //const auto ProjMatrix = glm::perspective(glm::radians(70.f), float(m_nWindowWidth)/float(m_nWindowHeight), 0.1f, 100.f);
         const auto ViewMatrix = m_Camera.getViewMatrix();
 
-        glUniform3fv(m_uDirectionalLightDirect, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 0)));
+        glUniform3fv(m_uDirectionalLightDirect, 1, glm::value_ptr(ViewMatrix * glm::vec4(lightDirection[0], lightDirection[1], lightDirection[2], 0)));
         glUniform3fv(m_uDirectionalLightIntensity, 1, glm::value_ptr(glm::vec3(lightIntensity[0], lightIntensity[1], lightIntensity[2])));
-        glUniform3fv(m_uPointLightPosition, 1, glm::value_ptr(ViewMatrix * glm::vec4(10, 10, 10, 1)));
+        glUniform3fv(m_uPointLightPosition, 1, glm::value_ptr(ViewMatrix * glm::vec4(pointLightPosition[0], pointLightPosition[1], pointLightPosition[2], 1)));
         glUniform3fv(m_uPointLightIntensity, 1, glm::value_ptr(glm::vec3(pointLightIntensity[0], pointLightIntensity[1], pointLightIntensity[2])));
         glUniform3fv(m_uKd, 1, glm::value_ptr(glm::vec3(lightColor[0], lightColor[1], lightColor[2])));
 
+        /************************************************************/
         /**** CUBE ****/
+        /************************************************************/
+        /*
         glBindVertexArray(m_cubeVAO);
 
         glActiveTexture(GL_TEXTURE0);
@@ -49,8 +62,12 @@ int Application::run()
         glDrawElements(GL_TRIANGLES, cube.indexBuffer.size(), GL_UNSIGNED_INT, nullptr); 
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
+        */
 
+        /************************************************************/
         /**** SPHERE ****/
+        /************************************************************/
+        /*
         glBindVertexArray(m_sphereVAO);
 
         glActiveTexture(GL_TEXTURE0);
@@ -68,6 +85,26 @@ int Application::run()
         glDrawElements(GL_TRIANGLES, sphere.indexBuffer.size(), GL_UNSIGNED_INT, nullptr); 
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
+        */
+
+        glBindVertexArray(m_SceneVAO);
+
+        {
+            const auto MMatrix = glm::mat4();
+            const auto MVMatrix = ViewMatrix * MMatrix;
+            const auto NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+            glUniformMatrix4fv(m_uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+            glUniformMatrix4fv(m_uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glUniformMatrix4fv(m_uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+        }
+
+        auto indexOffset = 0;
+        for (const auto indexCount: sponza.indexCountPerShape)
+        {
+            glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, (const GLvoid*) (indexOffset * sizeof(GLuint)));
+            indexOffset += indexCount;
+        }
+        glBindVertexArray(0);
 
         // GUI code:
         ImGui_ImplGlfwGL3_NewFrame();
@@ -75,18 +112,21 @@ int Application::run()
         {
             ImGui::Begin("GUI");
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            ImGui::Text("Colors");
             ImGui::ColorEditMode(ImGuiColorEditMode_RGB);
             if (ImGui::ColorEdit3("clearColor", clearColor)) {
                 glClearColor(clearColor[0], clearColor[1], clearColor[2], 1.f);
             }
             ImGui::ColorEdit3("lightColor", lightColor);
+            ImGui::Text("Directional Light");
+            ImGui::InputFloat3("lightDirection", lightDirection);
             ImGui::InputFloat3("lightIntensity", lightIntensity);
+            ImGui::Text("Positional Light");
+            ImGui::InputFloat3("pointLightPosition", pointLightPosition);
             ImGui::InputFloat3("pointLightIntensity", pointLightIntensity);
             ImGui::End();
         }
 
-        const auto viewportSize = m_GLFWHandle.framebufferSize();
-        glViewport(0, 0, viewportSize.x, viewportSize.y);
         ImGui::Render();
 
         /* Poll for and process events */
@@ -143,9 +183,11 @@ Application::Application(int argc, char** argv):
 
     glEnable(GL_DEPTH_TEST);
 
+
     /************************************************************/
 	/**** CUBE ****/
     /************************************************************/
+    /*
     glmlv::Image2DRGBA imageCube = glmlv::readImage(m_AssetsRootPath / m_AppName / "textures" / "texture1.jpg");
 
     glActiveTexture(GL_TEXTURE0);
@@ -171,8 +213,8 @@ Application::Application(int argc, char** argv):
     glBindBuffer(GL_ARRAY_BUFFER, 0);
   
     glGenVertexArrays(1, &m_cubeVAO);
-
     glBindVertexArray(m_cubeVAO);
+
     glBindBuffer(GL_ARRAY_BUFFER, m_cubeVBO);
 
     glEnableVertexAttribArray(positionAttrLocation);
@@ -188,10 +230,12 @@ Application::Application(int argc, char** argv):
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_cubeIBO);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+    */
 
     /************************************************************/
     /**** SPHERE ****/
     /************************************************************/
+    /*
     glmlv::Image2DRGBA imageSphere = glmlv::readImage(m_AssetsRootPath / m_AppName / "textures" / "texture1.jpg");
 
     glActiveTexture(GL_TEXTURE0);
@@ -216,7 +260,6 @@ Application::Application(int argc, char** argv):
     glBindBuffer(GL_ARRAY_BUFFER, 0);
   
     glGenVertexArrays(1, &m_sphereVAO);
-
     glBindVertexArray(m_sphereVAO);
     glBindBuffer(GL_ARRAY_BUFFER, m_sphereVBO);
 
@@ -234,10 +277,45 @@ Application::Application(int argc, char** argv):
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    */
+
+    /************************************************************/
+    /**** OBJ ****/
+    /************************************************************/
+    glGenBuffers(1, &m_SceneVBO);
+
+    glmlv::loadObj(m_AssetsRootPath / "glmlv" / "models" / "crytek-sponza" / "sponza.obj", sponza);
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_SceneVBO);
+    glBufferStorage(GL_ARRAY_BUFFER, sponza.vertexBuffer.size()*sizeof(sponza.vertexBuffer[0]), sponza.vertexBuffer.data(), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glGenBuffers(1, &m_SceneIBO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_SceneIBO);
+    glBufferStorage(GL_ARRAY_BUFFER, sponza.indexBuffer.size()*sizeof(sponza.indexBuffer[0]), sponza.indexBuffer.data(), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    glGenVertexArrays(1, &m_SceneVAO);
+    glBindVertexArray(m_SceneVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_SceneVBO);
+
+    glEnableVertexAttribArray(positionAttrLocation);
+    glVertexAttribPointer(positionAttrLocation, 3, GL_FLOAT, GL_FALSE, sizeof(glmlv::Vertex3f3f2f), (const GLvoid*) offsetof(glmlv::Vertex3f3f2f, position));
+
+    glEnableVertexAttribArray(normalAttrLocation);
+    glVertexAttribPointer(normalAttrLocation, 3, GL_FLOAT, GL_FALSE, sizeof(glmlv::Vertex3f3f2f), (const GLvoid*) offsetof(glmlv::Vertex3f3f2f, normal));
+
+    glEnableVertexAttribArray(texCoordsAttrLocation);
+    glVertexAttribPointer(texCoordsAttrLocation, 2, GL_FLOAT, GL_FALSE, sizeof(glmlv::Vertex3f3f2f), (const GLvoid*) offsetof(glmlv::Vertex3f3f2f, texCoords));
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_SceneIBO);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 Application::~Application()
 {
+    /*
     if (m_cubeVBO) {
         glDeleteBuffers(1, &m_cubeVBO);
     }
@@ -260,6 +338,19 @@ Application::~Application()
 
     if (m_sphereVAO) {
         glDeleteBuffers(1, &m_sphereVAO);
+    }
+    */
+
+    if (m_SceneVBO) {
+        glDeleteBuffers(1, &m_SceneVBO);
+    }
+
+    if (m_SceneIBO) {
+        glDeleteBuffers(1, &m_SceneIBO);
+    }
+
+    if (m_SceneVAO) {
+        glDeleteBuffers(1, &m_SceneVAO);
     }
 
     ImGui_ImplGlfwGL3_Shutdown();

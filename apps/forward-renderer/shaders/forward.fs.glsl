@@ -26,4 +26,6 @@ void main() {
 
 	vec3 uKd3 = uKd * vec3(texture(uKdSampler, vTexCoords));
 	fFragColor = uKd3 * (uDirectionalLightIntensity * max(0.0, dot(vNormal_vs, uDirectionalLightDirect)) + uPointLightIntensity * max(0.0, dot(vNormal_vs, dirToPointLight)) / (distToPointLight * distToPointLight));
+
+	fFragColor = vNormal_vs;
 };
