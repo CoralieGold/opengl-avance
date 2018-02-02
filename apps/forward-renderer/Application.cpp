@@ -28,6 +28,12 @@ int Application::run()
         ViewMatrix = m_Camera.getViewMatrix();
         //ViewMatrix = glm::lookAt(glm::vec3(1, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
+        glUniform3fv(uDirectionalLightDirect, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 0)));
+        glUniform3fv(uDirectionalLightIntensity, 1, glm::value_ptr(glm::vec3(1)));
+        glUniform3fv(uPointLightPosition, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 1)));
+        glUniform3fv(uPointLightIntensity, 1, glm::value_ptr(glm::vec3(1)));
+        glUniform3fv(uKd, 1, glm::value_ptr(glm::vec3(0.5, 0.5, 0.5)));
+
         /**** CUBE ****/
         glBindVertexArray(m_cubeVAO);
         MVMatrix_Cube = ViewMatrix * MVMatrix_Cube;
