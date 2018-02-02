@@ -30,16 +30,16 @@ private:
     GLuint m_sphereIBO = 0;
     GLuint m_sphereVAO = 0;
     
-    GLint uMVMatrix = -1;
-    GLint uMVPMatrix = -1;
-    GLint uNormalMatrix = -1;
+    GLint m_uMVMatrix = -1;
+    GLint m_uMVPMatrix = -1;
+    GLint m_uNormalMatrix = -1;
 
     // Variables uniformes lumière
-    GLint uDirectionalLightDirect = -1;
-    GLint uDirectionalLightIntensity = -1;
-    GLint uPointLightPosition = -1;
-    GLint uPointLightIntensity = -1;
-    GLint uKd = -1;
+    GLint m_uDirectionalLightDirect = -1;
+    GLint m_uDirectionalLightIntensity = -1;
+    GLint m_uPointLightPosition = -1;
+    GLint m_uPointLightIntensity = -1;
+    GLint m_uKd = -1;
 
     glmlv::GLProgram m_program;
     glmlv::ViewController m_Camera;

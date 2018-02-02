@@ -31,18 +31,18 @@ int Application::run()
         ViewMatrix = m_Camera.getViewMatrix();
         //ViewMatrix = glm::lookAt(glm::vec3(1, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
-        glUniform3fv(uDirectionalLightDirect, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 0)));
-        glUniform3fv(uDirectionalLightIntensity, 1, glm::value_ptr(glm::vec3(lightIntensity[0], lightIntensity[1], lightIntensity[2])));
-        glUniform3fv(uPointLightPosition, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 1)));
-        glUniform3fv(uPointLightIntensity, 1, glm::value_ptr(glm::vec3(pointLightIntensity[0], pointLightIntensity[1], pointLightIntensity[2])));
-        glUniform3fv(uKd, 1, glm::value_ptr(glm::vec3(lightColor[0], lightColor[1], lightColor[2])));
+        glUniform3fv(m_uDirectionalLightDirect, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 0)));
+        glUniform3fv(m_uDirectionalLightIntensity, 1, glm::value_ptr(glm::vec3(lightIntensity[0], lightIntensity[1], lightIntensity[2])));
+        glUniform3fv(m_uPointLightPosition, 1, glm::value_ptr(ViewMatrix * glm::vec4(1, 1, 1, 1)));
+        glUniform3fv(m_uPointLightIntensity, 1, glm::value_ptr(glm::vec3(pointLightIntensity[0], pointLightIntensity[1], pointLightIntensity[2])));
+        glUniform3fv(m_uKd, 1, glm::value_ptr(glm::vec3(lightColor[0], lightColor[1], lightColor[2])));
 
         /**** CUBE ****/
         glBindVertexArray(m_cubeVAO);
         MVMatrix_Cube = ViewMatrix * MVMatrix_Cube;
-        glUniformMatrix4fv(uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix_Cube));
-        glUniformMatrix4fv(uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glUniformMatrix4fv(uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Cube));
+        glUniformMatrix4fv(m_uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix_Cube));
+        glUniformMatrix4fv(m_uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+        glUniformMatrix4fv(m_uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Cube));
 
         glDrawElements(GL_TRIANGLES, cube.indexBuffer.size(), GL_UNSIGNED_INT, nullptr); 
         glBindVertexArray(0);
@@ -50,9 +50,9 @@ int Application::run()
         /**** SPHERE ****/
         glBindVertexArray(m_sphereVAO);
         MVMatrix_Sphere = ViewMatrix * MVMatrix_Sphere;
-        glUniformMatrix4fv(uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix_Sphere));
-        glUniformMatrix4fv(uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glUniformMatrix4fv(uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Sphere));
+        glUniformMatrix4fv(m_uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix_Sphere));
+        glUniformMatrix4fv(m_uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+        glUniformMatrix4fv(m_uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Sphere));
 
         glDrawElements(GL_TRIANGLES, sphere.indexBuffer.size(), GL_UNSIGNED_INT, nullptr); 
         glBindVertexArray(0);
@@ -114,15 +114,15 @@ Application::Application(int argc, char** argv):
     // Here we load and compile shaders from the library
     m_program = glmlv::compileProgram({ m_ShadersRootPath / m_AppName / "forward.vs.glsl", m_ShadersRootPath / m_AppName / "forward.fs.glsl" });
 
-    uMVMatrix = m_program.getUniformLocation("uMVMatrix");
-    uNormalMatrix = m_program.getUniformLocation("uNormalMatrix");
-    uMVPMatrix = m_program.getUniformLocation("uMVPMatrix");
+    m_uMVMatrix = m_program.getUniformLocation("uMVMatrix");
+    m_uNormalMatrix = m_program.getUniformLocation("uNormalMatrix");
+    m_uMVPMatrix = m_program.getUniformLocation("uMVPMatrix");
 
-    uDirectionalLightDirect = m_program.getUniformLocation("uDirectionalLightDirect");
-    uDirectionalLightIntensity = m_program.getUniformLocation("uDirectionalLightIntensity");
-    uPointLightPosition = m_program.getUniformLocation("uPointLightPosition");
-    uPointLightIntensity = m_program.getUniformLocation("uPointLightIntensity");
-    uKd = m_program.getUniformLocation("uKd");
+    m_uDirectionalLightDirect = m_program.getUniformLocation("uDirectionalLightDirect");
+    m_uDirectionalLightIntensity = m_program.getUniformLocation("uDirectionalLightIntensity");
+    m_uPointLightPosition = m_program.getUniformLocation("uPointLightPosition");
+    m_uPointLightIntensity = m_program.getUniformLocation("uPointLightIntensity");
+    m_uKd = m_program.getUniformLocation("uKd");
 
     // const GLint positionAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexPosition");
     // const GLint normalAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexNormal");
