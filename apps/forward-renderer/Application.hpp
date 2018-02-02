@@ -4,6 +4,7 @@
 #include <glmlv/GLFWHandle.hpp>
 #include <glmlv/GLProgram.hpp>
 #include <glmlv/simple_geometry.hpp>
+#include <glmlv/ViewController.hpp>
 
 class Application
 {
@@ -38,5 +39,5 @@ private:
     glmlv::SimpleGeometry cube;
     glmlv::SimpleGeometry sphere;
 
-    //glmlv::ViewController viewController;
+    glmlv::ViewController m_Camera;
 };

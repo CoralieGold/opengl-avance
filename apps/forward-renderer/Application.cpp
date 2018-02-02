@@ -22,11 +22,11 @@ int Application::run()
         // Put here rendering code
         glm::mat4 ProjMatrix, MVMatrix_Cube, MVMatrix_Sphere, NormalMatrix, ViewMatrix;
         ProjMatrix = glm::perspective(glm::radians(70.f), float(m_nWindowWidth)/float(m_nWindowHeight), 0.1f, 100.f);
-        MVMatrix_Cube = glm::translate(glm::mat4(1), glm::vec3(2.,0.,-5.0));
-        MVMatrix_Sphere = glm::translate(glm::mat4(1), glm::vec3(-2.,0.,-5.0));
+        MVMatrix_Cube = glm::translate(glm::mat4(1), glm::vec3(2.,0.5,-5.0));
+        MVMatrix_Sphere = glm::translate(glm::mat4(1), glm::vec3(-2.,0.5,-5.0));
         NormalMatrix = glm::transpose(glm::inverse(MVMatrix_Cube));
-        //ViewMatrix = viewController.getViewMatrix();
-        ViewMatrix = glm::lookAt(glm::vec3(1, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+        ViewMatrix = m_Camera.getViewMatrix();
+        //ViewMatrix = glm::lookAt(glm::vec3(1, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
         /**** CUBE ****/
         glBindVertexArray(m_cubeVAO);
@@ -75,7 +75,7 @@ int Application::run()
         auto ellapsedTime = glfwGetTime() - seconds;
         auto guiHasFocus = ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard;
         if (!guiHasFocus) {
-            //viewController.update(float(ellapsedTime))
+            m_Camera.update(float(ellapsedTime));
         }
     }
 
@@ -86,12 +86,13 @@ Application::Application(int argc, char** argv):
     m_AppPath { glmlv::fs::path{ argv[0] } },
     m_AppName { m_AppPath.stem().string() },
     m_ImGuiIniFilename { m_AppName + ".imgui.ini" },
-    m_ShadersRootPath { m_AppPath.parent_path() / "shaders" }
-
+    m_ShadersRootPath { m_AppPath.parent_path() / "shaders" },
+    m_Camera(m_GLFWHandle.window(), 0.f)
 {
     /************************************************************/
     /**** INITIALISATION ****/
     /************************************************************/
+
     // Here we load and compile shaders from the library
     m_program = glmlv::compileProgram({ m_ShadersRootPath / m_AppName / "forward.vs.glsl", m_ShadersRootPath / m_AppName / "forward.fs.glsl" });
 
@@ -107,8 +108,6 @@ Application::Application(int argc, char** argv):
 
     m_program.use();
     ImGui::GetIO().IniFilename = m_ImGuiIniFilename.c_str(); // At exit, ImGUI will store its windows positions in this file
-
-    //viewController = 
 
     glEnable(GL_DEPTH_TEST);
 
