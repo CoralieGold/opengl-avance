@@ -29,7 +29,14 @@ private:
     GLuint m_sphereIBO = 0;
     GLuint m_sphereVAO = 0;
     
+    GLint uMVMatrix = -1;
+    GLint uMVPMatrix = -1;
+    GLint uNormalMatrix = -1;
+
     glmlv::GLProgram m_program;
 
     glmlv::SimpleGeometry cube;
+    glmlv::SimpleGeometry sphere;
+
+    //glmlv::ViewController viewController;
 };

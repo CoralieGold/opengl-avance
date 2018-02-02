@@ -1,9 +1,9 @@
 #version 330 core
 
-in vec3 vFragColor;
+in vec3 vNormal_vs;
 
 out vec3 fFragColor;
 
 void main() {
-  fFragColor = vFragColor;
+  fFragColor = vNormal_vs;
 };

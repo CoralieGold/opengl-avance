@@ -20,9 +20,10 @@ int Application::run()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Put here rendering code
-        glm::mat4 ProjMatrix, MVMatrix_Cube, NormalMatrix, ViewMatrix;
+        glm::mat4 ProjMatrix, MVMatrix_Cube, MVMatrix_Sphere, NormalMatrix, ViewMatrix;
         ProjMatrix = glm::perspective(glm::radians(70.f), float(m_nWindowWidth)/float(m_nWindowHeight), 0.1f, 100.f);
-        MVMatrix_Cube = glm::translate(MVMatrix_Cube, glm::vec3(0.,0.,-5.0));
+        MVMatrix_Cube = glm::translate(glm::mat4(1), glm::vec3(2.,0.,-5.0));
+        MVMatrix_Sphere = glm::translate(glm::mat4(1), glm::vec3(-2.,0.,-5.0));
         NormalMatrix = glm::transpose(glm::inverse(MVMatrix_Cube));
         //ViewMatrix = viewController.getViewMatrix();
         ViewMatrix = glm::lookAt(glm::vec3(1, 0, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
@@ -30,11 +31,21 @@ int Application::run()
         /**** CUBE ****/
         glBindVertexArray(m_cubeVAO);
         MVMatrix_Cube = ViewMatrix * MVMatrix_Cube;
-        glUniformMatrix4fv(m_program.getAttribLocation("uMVMatrix"), 1, GL_FALSE, glm::value_ptr(MVMatrix_Cube));
-        glUniformMatrix4fv(m_program.getAttribLocation("uNormalMatrix"), 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glUniformMatrix4fv(m_program.getAttribLocation("uMVPMatrix"), 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Cube));
+        glUniformMatrix4fv(uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix_Cube));
+        glUniformMatrix4fv(uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+        glUniformMatrix4fv(uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Cube));
 
         glDrawElements(GL_TRIANGLES, cube.indexBuffer.size(), GL_UNSIGNED_INT, nullptr); 
+        glBindVertexArray(0);
+
+        /**** SPHERE ****/
+        glBindVertexArray(m_sphereVAO);
+        MVMatrix_Sphere = ViewMatrix * MVMatrix_Sphere;
+        glUniformMatrix4fv(uMVMatrix, 1, GL_FALSE, glm::value_ptr(MVMatrix_Sphere));
+        glUniformMatrix4fv(uNormalMatrix, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+        glUniformMatrix4fv(uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix_Sphere));
+
+        glDrawElements(GL_TRIANGLES, sphere.indexBuffer.size(), GL_UNSIGNED_INT, nullptr); 
         glBindVertexArray(0);
 
 
@@ -84,6 +95,9 @@ Application::Application(int argc, char** argv):
     // Here we load and compile shaders from the library
     m_program = glmlv::compileProgram({ m_ShadersRootPath / m_AppName / "forward.vs.glsl", m_ShadersRootPath / m_AppName / "forward.fs.glsl" });
 
+    uMVMatrix = m_program.getUniformLocation("uMVMatrix");
+    uNormalMatrix = m_program.getUniformLocation("uNormalMatrix");
+    uMVPMatrix = m_program.getUniformLocation("uMVPMatrix");
     // const GLint positionAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexPosition");
     // const GLint normalAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexNormal");
     // const GLint texCoordsAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexTexCoords");
@@ -93,6 +107,10 @@ Application::Application(int argc, char** argv):
 
     m_program.use();
     ImGui::GetIO().IniFilename = m_ImGuiIniFilename.c_str(); // At exit, ImGUI will store its windows positions in this file
+
+    //viewController = 
+
+    glEnable(GL_DEPTH_TEST);
 
     /************************************************************/
 	/**** CUBE ****/
@@ -128,12 +146,11 @@ Application::Application(int argc, char** argv):
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-
     /************************************************************/
     /**** SPHERE ****/
     /************************************************************/
-    /*glGenBuffers(1, &m_sphereVBO);
-    glmlv::SimpleGeometry sphere = glmlv::makeSphere(10);
+    glGenBuffers(1, &m_sphereVBO);
+    sphere = glmlv::makeSphere(10);
 
     glBindBuffer(GL_ARRAY_BUFFER, m_sphereVBO);
     glBufferStorage(GL_ARRAY_BUFFER, sphere.vertexBuffer.size()*sizeof(sphere.vertexBuffer[0]), sphere.vertexBuffer.data(), 0);
@@ -161,8 +178,7 @@ Application::Application(int argc, char** argv):
     // "GL_ELEMENT_ARRAY_BUFFER" permet de preciser que ce sont des indexs
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_sphereIBO);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);*/
-
+    glBindVertexArray(0);
 
 }
 
