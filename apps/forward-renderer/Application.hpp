@@ -34,10 +34,16 @@ private:
     GLint uMVPMatrix = -1;
     GLint uNormalMatrix = -1;
 
+    // Variables uniformes lumière
+    GLint uDirectionalLightDirect = -1;
+    GLint uDirectionalLightIntensity = -1;
+    GLint uPointLightPosition = -1;
+    GLint uPointLightIntensity = -1;
+    GLint uKd = -1;
+
     glmlv::GLProgram m_program;
+    glmlv::ViewController m_Camera;
 
     glmlv::SimpleGeometry cube;
-    glmlv::SimpleGeometry sphere;
-
-    glmlv::ViewController m_Camera;
+    glmlv::SimpleGeometry sphere;    
 };

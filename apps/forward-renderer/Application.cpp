@@ -87,7 +87,7 @@ Application::Application(int argc, char** argv):
     m_AppName { m_AppPath.stem().string() },
     m_ImGuiIniFilename { m_AppName + ".imgui.ini" },
     m_ShadersRootPath { m_AppPath.parent_path() / "shaders" },
-    m_Camera(m_GLFWHandle.window(), 0.f)
+    m_Camera(m_GLFWHandle.window(), 1.f)
 {
     /************************************************************/
     /**** INITIALISATION ****/
@@ -99,6 +99,13 @@ Application::Application(int argc, char** argv):
     uMVMatrix = m_program.getUniformLocation("uMVMatrix");
     uNormalMatrix = m_program.getUniformLocation("uNormalMatrix");
     uMVPMatrix = m_program.getUniformLocation("uMVPMatrix");
+
+    uDirectionalLightDirect = m_program.getUniformLocation("uDirectionalLightDirect");
+    uDirectionalLightIntensity = m_program.getUniformLocation("uDirectionalLightIntensity");
+    uPointLightPosition = m_program.getUniformLocation("uPointLightPosition");
+    uPointLightIntensity = m_program.getUniformLocation("uPointLightIntensity");
+    uKd = m_program.getUniformLocation("uKd");
+
     // const GLint positionAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexPosition");
     // const GLint normalAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexNormal");
     // const GLint texCoordsAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexTexCoords");
