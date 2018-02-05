@@ -24,16 +24,6 @@ private:
     const std::string m_ImGuiIniFilename;
     const glmlv::fs::path m_ShadersRootPath;
     const glmlv::fs::path m_AssetsRootPath;
-    
-    /*
-    GLuint m_cubeVBO = 0;
-    GLuint m_cubeIBO = 0;
-    GLuint m_cubeVAO = 0;
-
-    GLuint m_sphereVBO = 0;
-    GLuint m_sphereIBO = 0;
-    GLuint m_sphereVAO = 0;
-    */
 
     GLuint m_SceneVBO = 0;
     GLuint m_SceneIBO = 0;
@@ -55,20 +45,27 @@ private:
     GLint m_uKaSampler = -1;
     GLint m_uKsSampler = -1;
     GLint m_uShininessSampler = -1;
+    GLint m_uShininess = -1;
 
     glmlv::GLProgram m_program;
     glmlv::ViewController m_Camera;
 
-    /*
-    glmlv::SimpleGeometry cube;
-    glmlv::SimpleGeometry sphere;  
-    */
-
     glmlv::ObjData sponza; 
     std::vector<GLuint> sponzaTextures;
 
-    /*
-    GLuint m_cubeTexture;
-    GLuint m_sphereTexture;
-    */
+    enum GBufferTextureType
+    {
+        GPosition = 0,
+        GNormal,
+        GAmbient,
+        GDiffuse,
+        GGlossyShininess,
+        GDepth, // On doit créer une texture de depth mais on écrit pas directement dedans dans le FS. OpenGL le fait pour nous (et l'utilise).
+        GBufferTextureCount
+    };
+    const GLenum m_GBufferTextureFormat[GBufferTextureCount] = { GL_RGB32F, GL_RGB32F, GL_RGB32F, GL_RGB32F, GL_RGBA32F, GL_DEPTH_COMPONENT32F };
+
+    GLuint m_GBufferTextures[GBufferTextureCount];
+
+    GLuint m_FBO;
 };

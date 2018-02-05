@@ -16,6 +16,7 @@ int Application::run()
     float lightIntensity[3] = { 0.5, 0.5, 0.5 };
     float pointLightIntensity[3] = { 1000, 1000, 1000 };
     float pointLightPosition[3] = { 1, 1, 1 };
+    int textureToShow = 0;
 
     // Loop until the user closes the window
     for (auto iterationCount = 0u; !m_GLFWHandle.shouldClose(); ++iterationCount)
@@ -25,6 +26,7 @@ int Application::run()
         const auto viewportSize = m_GLFWHandle.framebufferSize();
         glViewport(0, 0, viewportSize.x, viewportSize.y);
 
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Put here rendering code
@@ -56,10 +58,15 @@ int Application::run()
             glUniformMatrix4fv(m_uMVPMatrix, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         }
 
+        
+        m_program.use();
+
         auto indexOffset = 0;
         for (int i = 0; i < sponza.shapeCount; ++i)
         {
             const auto materialID = sponza.materialIDPerShape[i];
+            glUniform1f(m_uShininess, sponza.materials[materialID].shininess);
+
             glActiveTexture(GL_TEXTURE0);
             glUniform1i(m_uKdSampler, 0);
             glBindTexture(GL_TEXTURE_2D, sponzaTextures[sponza.materials[materialID].KdTextureId]);
@@ -92,6 +99,16 @@ int Application::run()
 
         glBindVertexArray(0);
 
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBO);
+        glReadBuffer(GL_COLOR_ATTACHMENT0 + textureToShow);
+        
+        glBlitFramebuffer(0, 0, m_nWindowWidth, m_nWindowHeight, 0, 0, m_nWindowWidth, m_nWindowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+
         // GUI code:
         ImGui_ImplGlfwGL3_NewFrame();
 
@@ -110,6 +127,13 @@ int Application::run()
             ImGui::Text("Positional Light");
             ImGui::SliderFloat3("pointLightPosition", &pointLightPosition[0], -100, 100);
             ImGui::SliderFloat3("pointLightIntensity", &pointLightIntensity[0], 0, 1000);
+            ImGui::Text("Texture To Show");
+            ImGui::RadioButton("Position", &textureToShow, 0);
+            ImGui::RadioButton("Normal", &textureToShow, 1);
+            ImGui::RadioButton("Ambient", &textureToShow, 2);
+            ImGui::RadioButton("Diffuse", &textureToShow, 3);
+            ImGui::RadioButton("Glossy Shininess", &textureToShow, 4);
+
             ImGui::End();
         }
 
@@ -144,7 +168,7 @@ Application::Application(int argc, char** argv):
     /************************************************************/
 
     // Here we load and compile shaders from the library
-    m_program = glmlv::compileProgram({ m_ShadersRootPath / m_AppName / "forward.vs.glsl", m_ShadersRootPath / m_AppName / "forward.fs.glsl" });
+    m_program = glmlv::compileProgram({ m_ShadersRootPath / m_AppName / "geometryPass.vs.glsl", m_ShadersRootPath / m_AppName / "geometryPass.fs.glsl" });
 
     m_uMVMatrix = m_program.getUniformLocation("uMVMatrix");
     m_uNormalMatrix = m_program.getUniformLocation("uNormalMatrix");
@@ -159,10 +183,8 @@ Application::Application(int argc, char** argv):
     m_uKaSampler = m_program.getUniformLocation("uKaSampler");
     m_uKsSampler = m_program.getUniformLocation("uKsSampler");
     m_uShininessSampler = m_program.getUniformLocation("uShininessSampler");
-
-    // const GLint positionAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexPosition");
-    // const GLint normalAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexNormal");
-    // const GLint texCoordsAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexTexCoords");
+    m_uShininess = m_program.getUniformLocation("uShininess");
+    
     const GLint positionAttrLocation = 0;
     const GLint normalAttrLocation = 1;
     const GLint texCoordsAttrLocation = 2;
@@ -183,7 +205,7 @@ Application::Application(int argc, char** argv):
     glGenTextures(sponza.textures.size(), sponzaTextures.data());
 
     glActiveTexture(GL_TEXTURE0);
-    for(auto idx = 0; idx < sponzaTextures.size(); ++idx) {
+    for(auto idx = 0; idx < sponza.textures.size(); ++idx) {
         glBindTexture(GL_TEXTURE_2D, sponzaTextures[idx]);
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, sponza.textures[idx].width(), sponza.textures[idx].height());
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sponza.textures[idx].width(), sponza.textures[idx].height(), GL_RGBA, GL_UNSIGNED_BYTE, sponza.textures[idx].data());
@@ -191,6 +213,33 @@ Application::Application(int argc, char** argv):
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenTextures(sponza.textures.size(), m_GBufferTextures);
+
+    // boucle pour init les textures
+    glGenFramebuffers(1, &m_FBO);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO);
+    glGenTextures(GBufferTextureCount, &m_GBufferTextures[0]);
+    for(auto i = 0; i < GBufferTextureCount; ++i) {
+        glBindTexture(GL_TEXTURE_2D, m_GBufferTextures[i]);
+        glTexStorage2D(GL_TEXTURE_2D, 1, m_GBufferTextureFormat[i], m_nWindowWidth, m_nWindowHeight);
+    }
+
+    // boucle pour attacher les textures
+    for(auto i = 0; i < GBufferTextureCount - 1; ++i) {
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, m_GBufferTextures[i], 0);
+    }
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_GBufferTextures[GBufferTextureCount - 1], 0);
+
+    GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4 };
+    glDrawBuffers(5, drawBuffers);
+    GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (Status != GL_FRAMEBUFFER_COMPLETE) {
+        printf("FB error, status: 0x%x\n", Status);
+        exit(0);
+    }
+    
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     glBindBuffer(GL_ARRAY_BUFFER, m_SceneVBO);
     glBufferStorage(GL_ARRAY_BUFFER, sponza.vertexBuffer.size()*sizeof(sponza.vertexBuffer[0]), sponza.vertexBuffer.data(), 0);
@@ -221,32 +270,6 @@ Application::Application(int argc, char** argv):
 
 Application::~Application()
 {
-    /*
-    if (m_cubeVBO) {
-        glDeleteBuffers(1, &m_cubeVBO);
-    }
-
-    if (m_cubeIBO) {
-        glDeleteBuffers(1, &m_cubeIBO);
-    }
-
-    if (m_cubeVAO) {
-        glDeleteBuffers(1, &m_cubeVAO);
-    }
-
-    if (m_sphereVBO) {
-        glDeleteBuffers(1, &m_sphereVBO);
-    }
-
-    if (m_sphereIBO) {
-        glDeleteBuffers(1, &m_sphereIBO);
-    }
-
-    if (m_sphereVAO) {
-        glDeleteBuffers(1, &m_sphereVAO);
-    }
-    */
-
     if (m_SceneVBO) {
         glDeleteBuffers(1, &m_SceneVBO);
     }
