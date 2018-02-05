@@ -52,6 +52,9 @@ private:
 
     // Variable uniforme texture
     GLint m_uKdSampler = -1;
+    GLint m_uKaSampler = -1;
+    GLint m_uKsSampler = -1;
+    GLint m_uShininessSampler = -1;
 
     glmlv::GLProgram m_program;
     glmlv::ViewController m_Camera;
@@ -62,6 +65,7 @@ private:
     */
 
     glmlv::ObjData sponza; 
+    std::vector<GLuint> sponzaTextures;
 
     /*
     GLuint m_cubeTexture;

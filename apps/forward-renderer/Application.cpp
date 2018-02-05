@@ -87,6 +87,10 @@ int Application::run()
         glBindVertexArray(0);
         */
 
+        /************************************************************/
+        /**** OBJ ****/
+        /************************************************************/
+
         glBindVertexArray(m_SceneVAO);
 
         {
@@ -99,11 +103,39 @@ int Application::run()
         }
 
         auto indexOffset = 0;
-        for (const auto indexCount: sponza.indexCountPerShape)
+        for (int i = 0; i < sponza.shapeCount; ++i)
         {
-            glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, (const GLvoid*) (indexOffset * sizeof(GLuint)));
-            indexOffset += indexCount;
+            const auto materialID = sponza.materialIDPerShape[i];
+            glActiveTexture(GL_TEXTURE0);
+            glUniform1i(m_uKdSampler, 0);
+            glBindTexture(GL_TEXTURE_2D, sponzaTextures[sponza.materials[materialID].KdTextureId]);
+
+            glActiveTexture(GL_TEXTURE1);
+            glUniform1i(m_uKaSampler, 1);
+            glBindTexture(GL_TEXTURE_2D, sponzaTextures[sponza.materials[materialID].KaTextureId]);
+
+            glActiveTexture(GL_TEXTURE2);
+            glUniform1i(m_uKsSampler, 2);
+            glBindTexture(GL_TEXTURE_2D, sponzaTextures[sponza.materials[materialID].KsTextureId]);
+
+            glActiveTexture(GL_TEXTURE3);
+            glUniform1i(m_uShininessSampler, 3);
+            glBindTexture(GL_TEXTURE_2D, sponzaTextures[sponza.materials[materialID].shininessTextureId]);
+
+            glDrawElements(GL_TRIANGLES, sponza.indexCountPerShape[i], GL_UNSIGNED_INT, (const GLvoid*) (indexOffset * sizeof(GLuint)));
+            
+            indexOffset += sponza.indexCountPerShape[i];
         }
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
         glBindVertexArray(0);
 
         // GUI code:
@@ -119,11 +151,11 @@ int Application::run()
             }
             ImGui::ColorEdit3("lightColor", lightColor);
             ImGui::Text("Directional Light");
-            ImGui::InputFloat3("lightDirection", lightDirection);
-            ImGui::InputFloat3("lightIntensity", lightIntensity);
+            ImGui::SliderFloat3("lightDirection", &lightDirection[0], -100, 100);
+            ImGui::SliderFloat3("lightIntensity", &lightIntensity[0], 0, 10);
             ImGui::Text("Positional Light");
-            ImGui::InputFloat3("pointLightPosition", pointLightPosition);
-            ImGui::InputFloat3("pointLightIntensity", pointLightIntensity);
+            ImGui::SliderFloat3("pointLightPosition", &pointLightPosition[0], -100, 100);
+            ImGui::SliderFloat3("pointLightIntensity", &pointLightIntensity[0], 0, 1000);
             ImGui::End();
         }
 
@@ -170,6 +202,9 @@ Application::Application(int argc, char** argv):
     m_uPointLightIntensity = m_program.getUniformLocation("uPointLightIntensity");
     m_uKd = m_program.getUniformLocation("uKd");
     m_uKdSampler = m_program.getUniformLocation("uKdSampler");
+    m_uKaSampler = m_program.getUniformLocation("uKaSampler");
+    m_uKsSampler = m_program.getUniformLocation("uKsSampler");
+    m_uShininessSampler = m_program.getUniformLocation("uShininessSampler");
 
     // const GLint positionAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexPosition");
     // const GLint normalAttrLocation = glGetUniformLocation(m_program.glId(), "aVertexNormal");
@@ -242,7 +277,7 @@ Application::Application(int argc, char** argv):
     glGenTextures(1, &m_sphereTexture);
     glBindTexture(GL_TEXTURE_2D, m_sphereTexture);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, imageSphere.width(), imageSphere.height());
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, imageSphere.width(), imageSphere.height(), GL_RGBA, GL_UNSIGNED_BYTE, imageCube.data());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, imageSphere.width(), imageSphere.height(), GL_RGBA, GL_UNSIGNED_BYTE, imageSphere.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -285,6 +320,19 @@ Application::Application(int argc, char** argv):
     glGenBuffers(1, &m_SceneVBO);
 
     glmlv::loadObj(m_AssetsRootPath / "glmlv" / "models" / "crytek-sponza" / "sponza.obj", sponza);
+
+    sponzaTextures.resize(sponza.textures.size());
+    glGenTextures(sponza.textures.size(), sponzaTextures.data());
+
+    glActiveTexture(GL_TEXTURE0);
+    for(auto idx = 0; idx < sponzaTextures.size(); ++idx) {
+        glBindTexture(GL_TEXTURE_2D, sponzaTextures[idx]);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, sponza.textures[idx].width(), sponza.textures[idx].height());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sponza.textures[idx].width(), sponza.textures[idx].height(), GL_RGBA, GL_UNSIGNED_BYTE, sponza.textures[idx].data());
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     glBindBuffer(GL_ARRAY_BUFFER, m_SceneVBO);
     glBufferStorage(GL_ARRAY_BUFFER, sponza.vertexBuffer.size()*sizeof(sponza.vertexBuffer[0]), sponza.vertexBuffer.data(), 0);
