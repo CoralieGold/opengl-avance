@@ -1,13 +1,5 @@
 #version 330 core
 
-// Stocker les paramètres d'une lumière directionnelle
-uniform vec3 uDirectionalLightDirect;
-uniform vec3 uDirectionalLightIntensity;
-
-// Stocker les paramètres d'une lumière ponctuelle
-uniform vec3 uPointLightPosition;
-uniform vec3 uPointLightIntensity;
-
 // Stocker la couleur diffuse
 uniform vec3 uKd;
 
@@ -45,8 +37,8 @@ void main() {
 
 
 	fPosition = vPosition_vs;
-	fNormal = normalize(vNormal_vs);
-	fDiffuse = uKd * vec3(texture(uKdSampler, vTexCoords));
-	fAmbient = uKd * vec3(texture(uKaSampler, vTexCoords));
-	fGlossyShininess = vec4(uKd * vec3(texture(uKaSampler, vTexCoords)), uShininess);
+        fNormal = vNormal_vs;
+        fDiffuse = uKd;
+        fAmbient = vec3(texture(uKaSampler, vTexCoords));
+        fGlossyShininess = vec4(vec3(texture(uKsSampler, vTexCoords)), uShininess);
 };

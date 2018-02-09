@@ -12,7 +12,7 @@ class Application
 {
 public:
     Application(int argc, char** argv);
-	~Application();
+    ~Application();
     int run();
 private:
     const size_t m_nWindowWidth = 1280;
@@ -28,7 +28,11 @@ private:
     GLuint m_SceneVBO = 0;
     GLuint m_SceneIBO = 0;
     GLuint m_SceneVAO = 0;
-    
+
+    GLuint m_QuadShadingVBO = 0;
+    GLuint m_QuadShadingIBO = 0;
+    GLuint m_QuadShadingVAO = 0;
+
     GLint m_uMVMatrix = -1;
     GLint m_uMVPMatrix = -1;
     GLint m_uNormalMatrix = -1;
@@ -47,10 +51,11 @@ private:
     GLint m_uShininessSampler = -1;
     GLint m_uShininess = -1;
 
-    glmlv::GLProgram m_program;
+    glmlv::GLProgram m_program_shadingPass;
+    glmlv::GLProgram m_program_geometryPass;
     glmlv::ViewController m_Camera;
 
-    glmlv::ObjData sponza; 
+    glmlv::ObjData sponza;
     std::vector<GLuint> sponzaTextures;
 
     enum GBufferTextureType
@@ -68,4 +73,23 @@ private:
     GLuint m_GBufferTextures[GBufferTextureCount];
 
     GLuint m_FBO;
+
+    GLint m_uGPosition = -1;
+    GLint m_uGNormal = -1;
+    GLint m_uGAmbient = -1;
+    GLint m_uGDiffuse = -1;
+    GLint m_uGlossyShininess = -1;
+    GLint m_uGDirectionalLightDirect = -1;
+    GLint m_uGDirectionalLightIntensity = -1;
+    GLint m_uGPointLightPosition = -1;
+    GLint m_uGPointLightIntensity = -1;
+    GLint m_uGKd = -1;
+
+
+    GLuint m_GQuadVBO = 0;
+    GLuint m_GQuadIBO = 0;
+    GLuint m_GQuadVAO = 0;
+
+    GLuint m_textureSampler = 0;
+
 };
