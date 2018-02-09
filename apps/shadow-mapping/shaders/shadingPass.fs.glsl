@@ -12,21 +12,13 @@ uniform vec3 uDirectionalLightIntensity;
 uniform vec3 uPointLightPosition;
 uniform vec3 uPointLightIntensity;
 
+uniform mat4 uDirLightViewProjMatrix;
+uniform sampler2D uDirLightShadowMap;
+uniform float uDirLightShadowMapBias;
+
 out vec3 fFragColor;
 
 void main() {
-	// float distToPointLight = length(uPointLightPosition - vPosition_vs);
-	// vec3 dirToPointLight = (uPointLightPosition - vPosition_vs) / distToPointLight;
-
-	// vec3 uKd3 = vec3(texture(uKdSampler, vTexCoords));
-	// uKd3 += vec3(texture(uKaSampler, vTexCoords));
-	// uKd3 += vec3(texture(uKsSampler, vTexCoords));
-	// uKd3 += vec3(texture(uShininessSampler, vTexCoords));
-	// uKd3 *= uKd;
-	// fFragColor = uKd3 * (uDirectionalLightIntensity * max(0.0, dot(vNormal_vs, uDirectionalLightDirect)) + uPointLightIntensity * max(0.0, dot(vNormal_vs, dirToPointLight)) / (distToPointLight * distToPointLight));
-
-	// fFragColor = vNormal_vs;
-
         vec3 position = vec3(texelFetch(uGPosition, ivec2(gl_FragCoord.xy), 0));
         vec3 normal = vec3(texelFetch(uGNormal, ivec2(gl_FragCoord.xy), 0));
 
@@ -54,6 +46,13 @@ void main() {
             dothPointLight = pow(dothPointLight, shininess);
             dothDirLight = pow(dothDirLight, shininess);
         }
+
+        vec4 positionInDirLightScreen = uDirLightViewProjMatrix * vec4(position, 1);
+        vec3 positionInDirLightNDC = vec3(positionInDirLightScreen / positionInDirLightScreen.w) * 0.5 + 0.5;
+        float depthBlockerInDirSpace = texture(uDirLightShadowMap, positionInDirLightNDC.xy).r;
+        float dirLightVisibility = positionInDirLightNDC.z < depthBlockerInDirSpace + uDirLightShadowMapBias ? 1.0 : 0.0;
+
+        uDirectionalLightIntensity * = dirLightVisibility;
 
         fFragColor = ka;
         fFragColor += kd * (uDirectionalLightIntensity * max(0.f, dot(normal, uDirectionalLightDir)) + pointLightIncidentLight * max(0., dot(normal, dirToPointLight)));

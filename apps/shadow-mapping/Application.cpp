@@ -17,6 +17,11 @@ int Application::run()
     float pointLightIntensity[3] = { 1000, 1000, 1000 };
     float pointLightPosition[3] = { 1, 1, 1 };
     int textureToShow = 0;
+    /** SHADOW MAPPIN **/
+    bool directionalSMDirty = true;
+    m_DirLightPhiAngleDegrees = 90.f;
+    m_uDirectionalLightIntensity = 90.f;
+    float dirLightShadowMapBias = 10.f;
 
     // Loop until the user closes the window
     for (auto iterationCount = 0u; !m_GLFWHandle.shouldClose(); ++iterationCount)
@@ -24,13 +29,72 @@ int Application::run()
         const auto seconds = glfwGetTime();
         const auto viewportSize = m_GLFWHandle.framebufferSize();
 
-        const auto sceneDiagonalSize = glm::length(sponza.bboxMax - sponza.bboxMin);
+        m_BBoxMin = sponza.bboxMin;
+        m_BBoxMax = sponza.bboxMax;
+        const auto sceneDiagonalSize = glm::length(m_BBoxMax - m_BBoxMin);
         m_Camera.setSpeed(sceneDiagonalSize * 0.1f); // 10% de la scene parcouru par seconde
 
         const auto ProjMatrix = glm::perspective(70.f, float(viewportSize.x) / viewportSize.y, 0.01f * sceneDiagonalSize, sceneDiagonalSize); // near = 1% de la taille de la scene, far = 100%
         const auto ViewMatrix = m_Camera.getViewMatrix();
 
 
+        /** SHADOW MAPPING **/
+        if (directionalSMDirty)
+        {
+            // Calcul de la shadow map (**)
+            m_directionalSMProgram.use();
+
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_directionalSMFBO);
+            glViewport(0, 0, m_nDirectionalSMResolution, m_nDirectionalSMResolution);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            static const auto computeDirectionVectorUp = [](float phiRadians, float thetaRadians)
+            {
+                const auto cosPhi = glm::cos(phiRadians);
+                const auto sinPhi = glm::sin(phiRadians);
+                const auto cosTheta = glm::cos(thetaRadians);
+                return -glm::normalize(glm::vec3(sinPhi * cosTheta, -glm::sin(thetaRadians), cosPhi * cosTheta));
+            };
+
+            static const auto computeDirection = [](float phiRadians, float thetaRadians)
+            {
+                const auto cosPhi = glm::cos(phiRadians);
+                const auto sinPhi = glm::sin(phiRadians);
+                const auto cosTheta = glm::cos(thetaRadians);
+                const auto sinTheta = glm::sin(thetaRadians);
+                return glm::normalize(glm::vec3(cosPhi * sinTheta, sinPhi * sinTheta, cosTheta));
+            };
+
+            const auto sceneCenter = 0.5f * (m_BBoxMin + m_BBoxMax);
+            const float sceneRadius = sceneDiagonalSize * 0.5f;
+
+            const auto dirLightDirection = computeDirection(glm::radians(m_DirLightPhiAngleDegrees), glm::radians(m_DirLightThetaAngleDegrees));
+            const auto dirLightUpVector = computeDirectionVectorUp(glm::radians(m_DirLightPhiAngleDegrees), glm::radians(m_DirLightThetaAngleDegrees));
+            const auto dirLightViewMatrix = glm::lookAt(sceneCenter + dirLightDirection * sceneRadius, sceneCenter, dirLightUpVector); // Will not work if m_DirLightDirection is colinear to lightUpVector
+            const auto dirLightProjMatrix = glm::ortho(-sceneRadius, sceneRadius, -sceneRadius, sceneRadius, 0.01f * sceneRadius, 2.f * sceneRadius);
+
+
+
+            glUniformMatrix4fv(m_uDirLightViewProjMatrix, 1, GL_FALSE, glm::value_ptr(dirLightProjMatrix * dirLightViewMatrix));
+
+            glBindVertexArray(m_SceneVAO);
+
+            // We draw each shape by specifying how much indices it carries, and with an offset in the global index buffer
+            int indexOffsetShadowMap = 0;
+            for (int i = 0; i < sponza.shapeCount; ++i)
+            {
+                glDrawElements(GL_TRIANGLES, sponza.indexCountPerShape[i], GL_UNSIGNED_INT, (const GLvoid*) (indexOffsetShadowMap * sizeof(GLuint)));
+
+                indexOffsetShadowMap += sponza.indexCountPerShape[i];;
+            }
+
+            glBindVertexArray(0);
+
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+
+            directionalSMDirty = false; // Pas de calcul au prochain tour
+        }
 
         // GeometryPass
         m_program_geometryPass.use();
@@ -159,7 +223,7 @@ int Application::run()
             }
             ImGui::ColorEdit3("lightColor", lightColor);
             ImGui::Text("Directional Light");
-            ImGui::SliderFloat3("lightDirection", &lightDirection[0], -100, 100);
+            bool directional_light_change = ImGui::SliderFloat3("lightDirection", &lightDirection[0], -100, 100);
             ImGui::SliderFloat3("lightIntensity", &lightIntensity[0], 0, 10);
             ImGui::Text("Positional Light");
             ImGui::SliderFloat3("pointLightPosition", &pointLightPosition[0], -100, 100);
@@ -170,6 +234,18 @@ int Application::run()
             ImGui::RadioButton("Ambient", &textureToShow, 2);
             ImGui::RadioButton("Diffuse", &textureToShow, 3);
             ImGui::RadioButton("Glossy Shininess", &textureToShow, 4);
+            ImGui::Text("ShadowMapping");
+            ImGui::SliderFloat3("phi", &m_DirLightPhiAngleDegrees, 0, 360);
+            ImGui::SliderFloat3("theta", &m_DirLightThetaAngleDegrees, 0, 360);
+            ImGui::SliderFloat3("uDirLightShadowMapBias", &dirLightShadowMapBias, 0, 100);
+
+
+            // Pseudo code dans le dessin de la GUI:
+            if (directional_light_change)
+            {
+                directionalSMDirty = true; // Il faut recalculer la shadow map
+                std::cout << "Directional light changed" << std::endl;
+            }
 
             ImGui::End();
         }
@@ -208,6 +284,7 @@ Application::Application(int argc, char** argv):
     // Here we load and compile shaders from the library
     m_program_geometryPass = glmlv::compileProgram({ m_ShadersRootPath / m_AppName / "geometryPass.vs.glsl", m_ShadersRootPath / m_AppName / "geometryPass.fs.glsl" });
     m_program_shadingPass = glmlv::compileProgram({ m_ShadersRootPath / m_AppName / "shadingPass.vs.glsl", m_ShadersRootPath / m_AppName / "shadingPass.fs.glsl" });
+    m_directionalSMProgram = glmlv::compileProgram({ m_ShadersRootPath / m_AppName / "directionalSM.vs.glsl", m_ShadersRootPath / m_AppName / "directionalSM.fs.glsl" });
 
     m_program_geometryPass.use();
     m_uMVMatrix = m_program_geometryPass.getUniformLocation("uMVMatrix");
@@ -233,6 +310,11 @@ Application::Application(int argc, char** argv):
     m_uGDirectionalLightIntensity = m_program_shadingPass.getUniformLocation("uGDirectionalLightIntensity");
     m_uGPointLightPosition = m_program_shadingPass.getUniformLocation("uPointLightPosition");
     m_uGPointLightIntensity = m_program_shadingPass.getUniformLocation("uPointLightIntensity");
+
+
+    m_uDirLightViewProjMatrix = m_directionalSMProgram.getUniformLocation("uDirLightViewProjMatrix");
+    m_uDirLightShadowMapBias = m_program_shadingPass.getUniformLocation("uDirLightShadowMapBias");
+
 
     const GLint positionAttrLocation = 0;
     const GLint normalAttrLocation = 1;
@@ -326,18 +408,6 @@ Application::Application(int argc, char** argv):
         0, 2, 3 // Second triangle
    };
 
-//   glmlv::Image2DRGBA imageCube = glmlv::readImage(m_AssetsRootPath / m_AppName / "textures" / "texture1.jpg");
-
-//   glActiveTexture(GL_TEXTURE0);
-//   glGenTextures(1, &m_cubeTexture);
-//   glBindTexture(GL_TEXTURE_2D, m_cubeTexture);
-//   glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, imageCube.width(), imageCube.height());
-//   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, imageCube.width(), imageCube.height(), GL_RGBA, GL_UNSIGNED_BYTE, imageCube.data());
-//   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//   glBindTexture(GL_TEXTURE_2D, 0);
-
-
    glGenBuffers(1, &m_QuadShadingVBO);
 
    glBindBuffer(GL_ARRAY_BUFFER, m_QuadShadingVBO);
@@ -366,6 +436,30 @@ Application::Application(int argc, char** argv):
    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_QuadShadingIBO);
    glBindBuffer(GL_ARRAY_BUFFER, 0);
    glBindVertexArray(0);
+
+   /***** SHADOW MAPPING *****/
+   glGenTextures(1, &m_directionalSMTexture);
+   glBindTexture(GL_TEXTURE_2D, m_directionalSMTexture);
+   glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32F, 512, 512);
+   glGenFramebuffers(1, &m_directionalSMFBO);
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_directionalSMFBO);
+   glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_directionalSMTexture, 0);
+   GLenum depthDrawBuffer = GL_DEPTH_ATTACHMENT;
+   glDrawBuffers(1, &depthDrawBuffer);
+   Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+   if (Status != GL_FRAMEBUFFER_COMPLETE) {
+       printf("FB error, status: 0x%x\n", Status);
+       exit(0);
+   }
+   glGenSamplers(1, &m_directionalSMSampler);
+   glSamplerParameteri(m_directionalSMSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+   glSamplerParameteri(m_directionalSMSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+   glSamplerParameteri(m_directionalSMSampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+   glSamplerParameteri(m_directionalSMSampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+   glBindTexture(GL_TEXTURE_2D, 0);
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
 }
 
 Application::~Application()

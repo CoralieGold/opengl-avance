@@ -92,4 +92,21 @@ private:
 
     GLuint m_textureSampler = 0;
 
+    GLuint m_directionalSMTexture;
+    GLuint m_directionalSMFBO;
+    GLuint m_directionalSMSampler;
+    int32_t m_nDirectionalSMResolution = 512;
+
+
+    /** Shadow map **/
+    glmlv::GLProgram m_directionalSMProgram;
+    GLint m_uDirLightViewProjMatrix;
+
+    float m_DirLightPhiAngleDegrees;
+    float m_DirLightThetaAngleDegrees;
+
+    glm::vec3 m_BBoxMax;
+    glm::vec3 m_BBoxMin;
+
+    GLint m_uDirLightShadowMapBias = -1;
 };
